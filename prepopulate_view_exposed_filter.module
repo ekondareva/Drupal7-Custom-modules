@@ -1,0 +1,48 @@
+<?php
+
+/*
+* Implement hook_views_pre_view
+*/
+function prepopulate_view_exposed_filter_views_pre_view(&$view) {
+	if ($view->name == 'inspections') {
+		
+		//Get the required filter options from database, i.e. the names of Organizations that made inspections.
+		$query = new EntityFieldQuery;
+		$entities = $query->entityCondition('entity_type', 'node')
+			->entityCondition('bundle', 'organisations')
+			->propertyCondition('status', NODE_PUBLISHED)
+			->fieldCondition('field_name', 'value', 'NULL', '!=')
+			->fieldCondition('field_org_id', 'value', 'NULL', '!=')
+			->fieldOrderBy('field_name', 'value', 'ASC')
+			->execute();
+			
+		
+		if (isset($entities['node'])) {
+			//Load organisation items
+			$node_ids = array_keys($entities['node']);
+			$organisations = node_load_multiple($node_ids);
+		}
+		
+		if (!isset($organisations)) {
+			return;
+		}
+			
+		//Get filters of the View
+		$filters =  $view->display_handler->get_option('filters');
+		//Empty the existing filter values
+		$filters['field_organization_value']['group_info']['group_items'] = array();
+		
+		//Set counter to 1 as the first value is reserved for "All" option.
+		$counter = 1;
+		//Fill in Filter with new values
+		foreach($organisations as $org) {
+			$filters['field_organization_value']['group_info']['group_items'][$counter]['title'] = $org->field_name[und][0][value];
+			$filters['field_organization_value']['group_info']['group_items'][$counter]['operator'] = 'contains';
+			$filters['field_organization_value']['group_info']['group_items'][$counter]['value'] = $org->field_org_id[und][0][value];
+			$counter++;
+		}
+		
+		//Save updated filter for the View
+		$view->display_handler->override_option('filters', $filters);
+	}
+}

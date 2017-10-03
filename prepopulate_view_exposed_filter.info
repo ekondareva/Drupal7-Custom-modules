@@ -1,0 +1,3 @@
+name = Prepopulate View Exposed Filter
+description = Prepopulate View Exposed Filter with values from the other Content Type.
+core = 7.x
